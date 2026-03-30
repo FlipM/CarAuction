@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="AuctionSystem.App/AuctionSystem.App.csproj" />
+  <Project Path="AuctionSystem.Logic/AuctionSystem.Logic.csproj" />
+  <Project Path="AuctionSystem.Tests/AuctionSystem.Tests.csproj" />
+</Solution>
