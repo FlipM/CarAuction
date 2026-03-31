@@ -2,26 +2,51 @@ using AuctionSystem.Logic.Models.Vehicles;
 
 namespace AuctionSystem.Logic.Factories;
 
-public static class VehicleFactory
+public class VehicleFactory : IVehicleFactory
 {
-    public static Vehicle CreateHatchback(string manufacturer, int year, int startingBid, int numberOfDoors)
+  
+    public Vehicle CreateVehicle(string type, string manufacturer, string model, int year, int startingBid, Dictionary<string, object> extras)
     {
-        return new Hatchback(manufacturer, year, startingBid, numberOfDoors);
+
+        return type.ToUpper() switch
+        {
+            VehicleTypes.Hatchback => CreateHatchback(manufacturer, model, year, startingBid, extras),
+            VehicleTypes.Sedan => CreateSedan(manufacturer, model, year, startingBid, extras),
+            VehicleTypes.SUV => CreateSUV(manufacturer, model, year, startingBid, extras),
+            VehicleTypes.Truck => CreateTruck(manufacturer, model, year, startingBid, extras),
+            _ => throw new ArgumentException($"Vehicle type '{type}' is not recognized.")
+        };
+        
     }
 
-    public static Vehicle CreateSedan(string manufacturer, int year, int startingBid, int numberOfDoors)
+    private Hatchback CreateHatchback(string manufacturer, string model, int year, int startingBid, Dictionary<string, object> extras)
     {
-        return new Sedan(manufacturer, year, startingBid, numberOfDoors);
+        int doors = GetIntFromExtras(extras, "NumberOfDoors", VehicleDefaults.DefaultHatchbackDoors);
+        return new Hatchback(manufacturer, model, year, startingBid, doors);
     }
 
-    public static Vehicle CreateSUV(string manufacturer, int year, int startingBid, int numberOfSeats)
+    private Sedan CreateSedan(string manufacturer, string model, int year, int startingBid, Dictionary<string, object> extras)
     {
-        return new SUV(manufacturer, year, startingBid, numberOfSeats);
+        int doors = GetIntFromExtras(extras, "NumberOfDoors", VehicleDefaults.DefaultSedanDoors);
+        return new Sedan(manufacturer, model, year, startingBid, doors);
     }
 
-    public static Vehicle CreateTruck(string manufacturer, int year, int startingBid, int loadCapacity)
+    private SUV CreateSUV(string manufacturer, string model, int year, int startingBid, Dictionary<string, object> extras)
     {
-        return new Truck(manufacturer, year, startingBid, loadCapacity);
+        int seats = GetIntFromExtras(extras, "NumberOfSeats", VehicleDefaults.DefaultNumberOfSeats);
+        return new SUV(manufacturer, model, year, startingBid, seats);
     }
 
+    private Truck CreateTruck(string manufacturer, string model, int year, int startingBid, Dictionary<string, object> extras)
+    {
+        int loadCapacity = GetIntFromExtras(extras, "LoadCapacity", VehicleDefaults.DefaultLoadCapacity);
+        return new Truck(manufacturer, model, year, startingBid, loadCapacity);
+    }
+
+    private int GetIntFromExtras(Dictionary<string, object> extras, string key, int defaultValue)
+    {
+        return extras.TryGetValue(key, out var value) && value is int intValue 
+                ? intValue 
+                : defaultValue;
+    }
 }
