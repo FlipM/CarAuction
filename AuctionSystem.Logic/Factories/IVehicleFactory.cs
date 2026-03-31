@@ -4,5 +4,5 @@ namespace AuctionSystem.Logic.Factories;
 
 public interface IVehicleFactory
 {
-    public Vehicle CreateVehicle(string type, string manufacturer, string model, int year, int startingBid, Dictionary<string, object> extras);
+    public Vehicle CreateVehicle(string plate, string type, string manufacturer, string model, int year, int startingBid, Dictionary<string, object> extras);
 }

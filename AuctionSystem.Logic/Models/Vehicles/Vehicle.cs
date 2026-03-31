@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace AuctionSystem.Logic.Models.Vehicles;
 
 static class VehicleDefaults
@@ -8,7 +10,6 @@ static class VehicleDefaults
     public const int DefaultLoadCapacity = 1000;
 }
 
-    public const string Sedan = "SED
 static class VehicleTypes
 {
     public const string Sedan = "SED";
@@ -21,14 +22,18 @@ static class VehicleTypes
 public abstract class Vehicle 
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    [MaxLength(8), MinLength(1)]
+    public string Plate { get; set; } = string.Empty;
+    [MaxLength(3), MinLength(3)]
     public string Type { get; set; } = string.Empty;
     public string Manufacturer { get; set; } = string.Empty;
     public string Model { get; set; } = string.Empty;
     public int Year { get; set; } = 0;
     public int StartingBid { get; set; } = 0;
 
-    protected Vehicle(string type, string manufacturer, string model, int year, int startingBid)
+    protected Vehicle(string plate, string type, string manufacturer, string model, int year, int startingBid)
     {
+        Plate = plate;
         Type = type;
         Manufacturer = manufacturer;
         Model = model;

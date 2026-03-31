@@ -1,6 +1,5 @@
-using AuctionSystem.Logic.Models.Vehicles;
-using AuctionSystem.Logic.Factories;
 using System.Collections.Concurrent;
+using System.ComponentModel.DataAnnotations;
 
 namespace AuctionSystem.Logic.Models;
 
@@ -8,61 +7,59 @@ namespace AuctionSystem.Logic.Models;
 public class Auction
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public string Title { get; set; } = string.Empty;
+    [MaxLength(8), MinLength(1)]
+    public string VehiclePlate { get; set; } = string.Empty;
 
-    private ConcurrentDictionary<Vehicle, int> _inventory { get; set; } = new ConcurrentDictionary<Vehicle, int>();
-    private readonly IVehicleFactory _vehicleFactory;
+    private int CurrentBid { get; set; } = 0;
+    private readonly object BidLock = new();
 
-    public Auction(IVehicleFactory vehicleFactory, out Guid auctionId)
+
+    private ConcurrentDictionary<DateTime, (string User, int BidAmount)> BiddingLogDict { get; set; } = new ConcurrentDictionary<DateTime, (string User, int BidAmount)>();
+
+    public Auction(string plate, int initialBid, out Guid auctionId)
     {
-        _vehicleFactory = vehicleFactory;
+        VehiclePlate = plate;
+        CurrentBid = initialBid;
         auctionId = Id;
     }   
 
-    public void AddVehicle(string type, string manufacturer, string model, int year, int startingBid, Dictionary<string, object>? additionalParams = null)
+    public bool BidOnVehicle(string user, int bidAmount)
     {
-        Vehicle vehicle = _vehicleFactory.CreateVehicle(type, manufacturer, model, year, startingBid, additionalParams ?? new Dictionary<string, object>());
-         _inventory[vehicle] = startingBid;
-    }
 
-    public IEnumerable<Vehicle> GetFilteredAuctionVehicles(string? type, string? model, string? manufacturer, int? year)
-    {
-        IEnumerable<Vehicle> filtered = _inventory.Keys;
-
-        if (!string.IsNullOrEmpty(type))
-            filtered = filtered.Where(v => v.Type == type);
-
-        if (!string.IsNullOrEmpty(model))
-            filtered = filtered.Where(v => v.Model == model);
-
-        if (!string.IsNullOrEmpty(manufacturer))
-            filtered = filtered.Where(v => v.Manufacturer == manufacturer);
-
-        if (year.HasValue)
-            filtered = filtered.Where(v => v.Year == year.Value);
-
-        return filtered;
-    }
-
-    public bool BidOnVehicle(Guid vehicleId, int bidAmount)
-    {
-        var vehicle = _inventory.Keys.FirstOrDefault(v => v.Id == vehicleId);
-        if (vehicle == null)
+        if (bidAmount < 0)
         {
-            Console.WriteLine($"Vehicle with ID {vehicleId} not found in auction, can't place bid.");
+            Console.WriteLine($"Bid amount cannot be negative for vehicle with plate {VehiclePlate}.");
             return false;
         }
 
-        if (bidAmount > _inventory[vehicle])
+        lock (BidLock)
         {
-            _inventory[vehicle] = bidAmount;
-            Console.WriteLine($"Bid placed on vehicle with ID {vehicleId} for ${bidAmount}.");
+            if (bidAmount <= CurrentBid)
+            {
+                Console.WriteLine($"Bid amount ${bidAmount} is not higher than current bid for vehicle with plate {VehiclePlate}.");
+                return false;
+            }
+            
+            if (bidAmount > CurrentBid)
+            {
+                BiddingLogDict[DateTime.Now] = (user, bidAmount);
+                CurrentBid = bidAmount;
+                Console.WriteLine($"Bid placed on vehicle with plate {VehiclePlate} for ${bidAmount}.");
 
-            return true;
+                return true;
+            }
         }
 
-        Console.WriteLine($"Bid amount ${bidAmount} is not higher than current bid for vehicle with ID {vehicleId}.");
+        Console.WriteLine($"Bid amount ${bidAmount} is not higher than current bid for vehicle with plate {VehiclePlate}.");
         return false;
+    }
+
+    public int GetCurrentBid()
+    {
+        lock (BidLock)
+        {
+            return CurrentBid;
+        }
     }
 
 }
