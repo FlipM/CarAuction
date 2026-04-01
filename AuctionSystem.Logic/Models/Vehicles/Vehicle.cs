@@ -22,13 +22,23 @@ static class VehicleTypes
 public abstract class Vehicle 
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    [MaxLength(8), MinLength(1)]
+    
+    [MaxLength(8), MinLength(1), RegularExpression(@"^[a-zA-Z0-9]+$", ErrorMessage = "Plate can only contain letters, numbers.")]
     public string Plate { get; set; } = string.Empty;
+
     [MaxLength(3), MinLength(3)]
     public string Type { get; set; } = string.Empty;
+    
+    [MaxLength(50), MinLength(2), RegularExpression(@"^[a-zA-Z0-9\s]+$", ErrorMessage = "Manufacturer can only contain letters, numbers, and spaces.")]
     public string Manufacturer { get; set; } = string.Empty;
+
+    [MaxLength(50), MinLength(2), RegularExpression(@"^[a-zA-Z0-9\s]+$", ErrorMessage = "Model can only contain letters, numbers, and spaces.")]
     public string Model { get; set; } = string.Empty;
+
+    [Range(1886, 2023, ErrorMessage = "Year must be a valid year.")]
     public int Year { get; set; } = 0;
+
+    [Range(-1, int.MaxValue, ErrorMessage = "Starting bid must be a non-negative value.")]
     public int StartingBid { get; set; } = 0;
 
     protected Vehicle(string plate, string type, string manufacturer, string model, int year, int startingBid)

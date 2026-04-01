@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using AuctionSystem.Logic.Models.Vehicles;
 
 namespace AuctionSystem.Logic.Factories;
@@ -7,12 +8,7 @@ public class VehicleFactory : IVehicleFactory
   
     public Vehicle CreateVehicle(string plate, string type, string manufacturer, string model, int year, int startingBid, Dictionary<string, object> extras)
     {
-        if (string.IsNullOrWhiteSpace(plate) || plate.Length != 8 || plate.Any(c => !char.IsLetterOrDigit(c)))
-        {
-            throw new ArgumentException("Plate must be exactly 8 characters long, with only letters and digits.", nameof(plate));
-        }
-
-        return type.ToUpper() switch
+        Vehicle vehicle = type.ToUpper() switch
         {
             VehicleTypes.Hatchback => CreateHatchback(plate, manufacturer, model, year, startingBid, extras),
             VehicleTypes.Sedan => CreateSedan(plate, manufacturer, model, year, startingBid, extras),
@@ -20,7 +16,17 @@ public class VehicleFactory : IVehicleFactory
             VehicleTypes.Truck => CreateTruck(plate, manufacturer, model, year, startingBid, extras),
             _ => throw new ArgumentException($"Vehicle type '{type}' is not recognized.")
         };
-        
+
+        var context = new ValidationContext(vehicle);
+        var results = new List<ValidationResult>();
+
+        if (!Validator.TryValidateObject(vehicle, context, results, true))
+        {
+            var errors = string.Join(" ", results.Select(r => r.ErrorMessage));
+            throw new ArgumentException($"Vehicle validation failed: {errors}");
+        }
+
+        return vehicle;
     }
 
     private Hatchback CreateHatchback(string plate, string manufacturer, string model, int year, int startingBid, Dictionary<string, object> extras)

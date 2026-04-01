@@ -7,10 +7,13 @@ namespace AuctionSystem.Logic.Models;
 public class Auction
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    [MaxLength(8), MinLength(1)]
+
+    [MaxLength(8), MinLength(6)]
     public string VehiclePlate { get; set; } = string.Empty;
 
+    [Range(0, int.MaxValue, ErrorMessage = "Current bid must be a positive value.")]
     private int CurrentBid { get; set; } = 0;
+
     private readonly object BidLock = new();
 
 
@@ -29,6 +32,12 @@ public class Auction
         if (bidAmount < 0)
         {
             Console.WriteLine($"Bid amount cannot be negative for vehicle with plate {VehiclePlate}.");
+            return false;
+        }
+
+        if (bidAmount > Int32.MaxValue)
+        {
+            Console.WriteLine($"Bid amount is out of bounds. Talk to our support team for more information about bidding limits.");
             return false;
         }
 
@@ -60,6 +69,12 @@ public class Auction
         {
             return CurrentBid;
         }
+    }
+
+    public List<(DateTime Timestamp, string User, int BidAmount)> GetBiddingLog()
+    {
+        var log = BiddingLogDict.Select(entry => (entry.Key, entry.Value.User, entry.Value.BidAmount)).ToList();
+        return log;
     }
 
 }

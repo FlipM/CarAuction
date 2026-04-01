@@ -29,5 +29,7 @@ Implements an MVP car auction system, in C#, that handles requests via API.
 # Assumptions
 
 => Auction 
-
     The requirement states that "When starting an auction, verify that the vehicle exists in the inventory and is not already in an active auction." and "validate that the auction for the given vehicle...", which indicates an 1 to 1 relationship between auction and vehicles. That is what was implemented.
+
+=> Finished auction
+    There is no specific requirement determining what to do with finished auctions. For now, the system is discarding them, and removing the car from the inventory, when it was "sold". If there is a need to store finished auctions, an auxiliary structure can be created with minor changes.
