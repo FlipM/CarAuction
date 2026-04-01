@@ -17,7 +17,7 @@ public class Auction
     private readonly object BidLock = new();
 
 
-    private ConcurrentDictionary<DateTime, (string User, int BidAmount)> BiddingLogDict { get; set; } = new ConcurrentDictionary<DateTime, (string User, int BidAmount)>();
+    private ConcurrentQueue<(DateTime Timestamp, string User, int BidAmount)> BiddingLogQueue { get; set; } = new ConcurrentQueue<(DateTime Timestamp, string User, int BidAmount)>();
 
     public Auction(string plate, int initialBid, out Guid auctionId)
     {
@@ -28,23 +28,9 @@ public class Auction
 
     public bool BidOnVehicle(string user, int bidAmount)
     {
-        try
+        if (bidAmount < 0)
         {
-            if (bidAmount < 0)
-            {
-                Console.WriteLine($"Bid amount cannot be negative for vehicle with plate {VehiclePlate}.");
-                return false;
-            }
-
-            if (bidAmount > Int32.MaxValue)
-            {
-                Console.WriteLine($"Bid amount is out of bounds. Talk to our support team for more information about bidding limits.");
-                return false;
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error placing bid: {ex.Message}");
+            Console.WriteLine($"Bid amount cannot be negative for vehicle with plate {VehiclePlate}.");
             return false;
         }
 
@@ -57,7 +43,7 @@ public class Auction
             }
             else
             {
-                BiddingLogDict[DateTime.Now] = (user, bidAmount);
+                BiddingLogQueue.Enqueue((DateTime.UtcNow, user, bidAmount));
                 CurrentBid = bidAmount;
                 Console.WriteLine($"Bid placed on vehicle with plate {VehiclePlate} for ${bidAmount}.");
 
@@ -76,7 +62,7 @@ public class Auction
 
     public List<(DateTime Timestamp, string User, int BidAmount)> GetBiddingLog()
     {
-        var log = BiddingLogDict.Select(entry => (entry.Key, entry.Value.User, entry.Value.BidAmount)).ToList();
+        var log = BiddingLogQueue.ToList();
         return log;
     }
 

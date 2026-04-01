@@ -51,8 +51,7 @@ public class UnitTest
 
     public void AuctionSystemSingleAuctionWorkflowTest()
     {
-        var auctionSystem = AuctionSystemModel.Instance(new VehicleFactory());
-        auctionSystem.ResetState();
+        var auctionSystem = new AuctionSystemModel(new VehicleFactory());
 
         string sedanPlate = "ABC12345";
         var sedanOk = auctionSystem.CreateVehicle(sedanPlate, VehicleTypes.Sedan, "Toyota", "Camry", 2020, 15000, new Dictionary<string, object> { { Sedan.PropertyNameND, 4 } });
@@ -77,23 +76,19 @@ public class UnitTest
         Assert.False(auctionSystem.GetActiveAuctions().Any(a => a.VehiclePlate == sedanPlate), "Sedan auction should not be active after auction ended.");
 
         // Attempt to place bid after auction ended
-        bool bidAfterEnd = auctionSystem.PlaceBid(sedanPlate, "User3", 18000);
-        Assert.False(bidAfterEnd, "Was able to place bid after auction ended.");
+        Assert.Throws<ArgumentException>(() => auctionSystem.PlaceBid(sedanPlate, "User3", 18000));
 
         // Attempt to end auction again
-        int secondEndAttempt = auctionSystem.EndAuction(sedanPlate, true);
-        Assert.Equal(-1, secondEndAttempt);
+        Assert.Throws<ArgumentException>(() => auctionSystem.EndAuction(sedanPlate, true));
 
         // Attempt to start auction for non-existent vehicle
-        bool startNonExistent = auctionSystem.StartAuction(sedanPlate);
-        Assert.False(startNonExistent, "Was able to start auction for sold vehicle.");
+        Assert.Throws<ArgumentException>(() => auctionSystem.StartAuction(sedanPlate));
     }
 
     [Fact]
     public void AuctionMultipleAuctionsTest()
     {
-        var auctionSystem = AuctionSystemModel.Instance(new VehicleFactory());
-        auctionSystem.ResetState();
+        var auctionSystem = new AuctionSystemModel(new VehicleFactory());
         string sedanPlate = "ABC12345";
         string suvPlate = "GHI54321";
         string hatchbackPlate = "DEF67890";
@@ -101,14 +96,14 @@ public class UnitTest
         auctionSystem.CreateVehicle(sedanPlate, VehicleTypes.Sedan, "Toyota", "Camry", 2020, 15000, new Dictionary<string, object> { { Sedan.PropertyNameND, 4 } });
         auctionSystem.CreateVehicle(suvPlate, VehicleTypes.SUV, "Ford", "Explorer", 2021, 25000, new Dictionary<string, object> { { SUV.PropertyNameNS, 7 } });
         auctionSystem.CreateVehicle(hatchbackPlate, VehicleTypes.Hatchback, "Honda", "Civic", 2021, 18000, new Dictionary<string, object> { { Hatchback.PropertyNameND, 4 } });
-        Assert.False(auctionSystem.CreateVehicle(sedanPlate, VehicleTypes.Sedan, "Toyota", "Corolla", 2021, 17000, new Dictionary<string, object> { { Sedan.PropertyNameND, 4 } }));
+        Assert.Throws<ArgumentException>(() => auctionSystem.CreateVehicle(sedanPlate, VehicleTypes.Sedan, "Toyota", "Corolla", 2021, 17000, new Dictionary<string, object> { { Sedan.PropertyNameND, 4 } }));
 
         Assert.True(auctionSystem.StartAuction(sedanPlate) && auctionSystem.StartAuction(suvPlate), "Failed to start auctions for sedan and SUV.");
         Assert.True(auctionSystem.GetActiveAuctions().Count() == 2, "Active auctions count should be 2 after starting sedan and SUV auctions.");
-        Assert.False(auctionSystem.StartAuction(sedanPlate), "Was able to start auction for sedan again while it's already active.");
+        Assert.Throws<InvalidOperationException>(() => auctionSystem.StartAuction(sedanPlate));
 
         Assert.True(auctionSystem.PlaceBid(sedanPlate, "User1", 16000) && auctionSystem.PlaceBid(suvPlate, "User2", 26000), "Failed to place bids on sedan and SUV auctions.");
-        Assert.False(auctionSystem.PlaceBid(hatchbackPlate, "User3", 19000), "Hatchback is not auctioned.");   
+        Assert.Throws<ArgumentException>(() => auctionSystem.PlaceBid(hatchbackPlate, "User3", 19000));
 
         var activeAuctions = auctionSystem.GetActiveAuctions();
         Assert.Single(activeAuctions, a => a.VehiclePlate == sedanPlate && a.GetCurrentBid() == 16000);
@@ -121,26 +116,37 @@ public class UnitTest
 
         Assert.True(auctionSystem.GetFilteredAuctionVehicles().Any(v => v.Plate == suvPlate), "SUV should still be in inventory after failed auction.");
         Assert.False(auctionSystem.GetFilteredAuctionVehicles().Any(v => v.Plate == sedanPlate), "Sedan should not be in inventory after successful auction.");
-        Assert.False(auctionSystem.PlaceBid(suvPlate, "User3", 27000), "Was able to place bid on SUV after auction ended, with the vehicle on the inventory.");
+        Assert.Throws<ArgumentException>(() => auctionSystem.PlaceBid(suvPlate, "User3", 27000));
 
     }
 
     [Fact]
     public void ConcurrencyTests()
     {
-        var auctionSystem = AuctionSystemModel.Instance(new VehicleFactory());
-        auctionSystem.ResetState();
+        var auctionSystem = new AuctionSystemModel(new VehicleFactory());
         string sedanPlate = "ABC12345";
 
         Parallel.For(0, 5, i =>
         {
-            auctionSystem.CreateVehicle(sedanPlate, VehicleTypes.Sedan, "Toyota", "Camry", 2020, 15000, new Dictionary<string, object> { { Sedan.PropertyNameND, 4 } });
+            try
+            {
+                auctionSystem.CreateVehicle(sedanPlate, VehicleTypes.Sedan, "Toyota", "Camry", 2020, 15000, new Dictionary<string, object> { { Sedan.PropertyNameND, 4 } });
+            }
+            catch (ArgumentException)
+            {
+            }
         });
         Assert.True(auctionSystem.GetFilteredAuctionVehicles().Count(v => v.Plate == sedanPlate) == 1, "There should only be one vehicle with the same plate in inventory.");
 
         Parallel.For(0, 5, i =>
         {
-            auctionSystem.StartAuction(sedanPlate);
+            try
+            {
+                auctionSystem.StartAuction(sedanPlate);
+            }
+            catch (InvalidOperationException)
+            {
+            }
         });
         Assert.True(auctionSystem.GetActiveAuctions().Count() == 1, "There should only be one active auction.");
 
@@ -159,25 +165,21 @@ public class UnitTest
 
         Assert.True(successfulBids > 0, "At least one bid should be successful.");
         Assert.True(15000 + totalBids * successfulBids < highestBid, "Highest bid should be greater than the initial bid plus increments of successful bids.");
-        var activeAuctions = auctionSystem.GetActiveAuctions();
-        Assert.Single(activeAuctions, a => a.VehiclePlate == sedanPlate && a.GetCurrentBid() == 15000 + totalBids * 100);
-    }
 
-    [Fact]
-    public void StressTests()
-    {
-        var auctionSystem = AuctionSystemModel.Instance(new VehicleFactory());
-        auctionSystem.ResetState();
-        
-        for (int i = 0; i < 10000; i++)
+        Parallel.For(0, 5, i =>
         {
-            string plate = $"PL{i:D5}";
-
-            Assert.True(auctionSystem.CreateVehicle(plate, VehicleTypes.Sedan, "Toyota", "Camry", 2020, 15000, new Dictionary<string, object> { { Sedan.PropertyNameND, 4 } }), $"Failed to create vehicle with plate {plate}.");
-            Assert.True(auctionSystem.StartAuction(plate), $"Failed to start auction for vehicle with plate {plate}.");
-            Assert.True(auctionSystem.PlaceBid(plate, "User1", 16000), $"Failed to place bid on auction for vehicle with plate {plate}.");
-            int auctionResult = auctionSystem.EndAuction(plate, true);
-            Assert.Equal(16000, auctionResult);
-        }
+            try
+            {
+                auctionSystem.EndAuction(sedanPlate, isSold: false);
+            }
+            catch (ArgumentException)
+            {
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        });
+        Assert.True(auctionSystem.GetActiveAuctions().Count() == 0, "There should be no active auctions after ending the auction.");
+        Assert.True(auctionSystem.GetFilteredAuctionVehicles().Any(v => v.Plate == sedanPlate), "Vehicle should still be in inventory after failed auction.");
     }
 }

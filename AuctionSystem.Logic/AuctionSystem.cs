@@ -7,28 +7,12 @@ namespace AuctionSystem.Logic.Models;
 // Singleton class to hold the state of the auction system
 public class AuctionSystem
 {
-    
-    private static AuctionSystem? _instance;
     private ConcurrentDictionary<string, Vehicle> Inventory { get; set; } = new ConcurrentDictionary<string, Vehicle>();
     private IVehicleFactory VehicleFactory { get; set; }
 
     /// Active auctions
-    private ConcurrentDictionary<Auction, string> Auctions { get; set; } = new ConcurrentDictionary<Auction, string>();
-    private ConcurrentDictionary<string, Guid?> VehicleAuctions { get; set; } = new ConcurrentDictionary<string, Guid?>();
-
-
-    public static AuctionSystem Instance(IVehicleFactory vehicleFactory)
-    {
-        return _instance ??= new AuctionSystem(vehicleFactory);
-    }
-    
-    // Allow tests to reset singleton state
-    public void ResetState()
-    {
-        Inventory.Clear();
-        Auctions.Clear();
-        VehicleAuctions.Clear();
-    }
+    private ConcurrentDictionary<Guid, Auction> Auctions { get; set; } = new ConcurrentDictionary<Guid, Auction>();
+    private ConcurrentDictionary<string, Guid> VehicleAuctions { get; set; } = new ConcurrentDictionary<string, Guid>();
     
     public AuctionSystem(IVehicleFactory vehicleFactory)
     {
@@ -37,22 +21,13 @@ public class AuctionSystem
 
     public bool CreateVehicle(string plate, string type, string manufacturer, string model, int year, int startingBid, Dictionary<string, object>? extras = null)
     {
-        try
+        var vehicle = VehicleFactory.CreateVehicle(plate, type, manufacturer, model, year, startingBid, extras ?? new Dictionary<string, object>());
+        if (Inventory.TryAdd(plate, vehicle))
         {
-            var vehicle = VehicleFactory.CreateVehicle(plate, type, manufacturer, model, year, startingBid, extras ?? new Dictionary<string, object>());
-            if (Inventory.TryAdd(plate, vehicle))
-            {
-                VehicleAuctions[plate] = null;
-                return true;
-            }
-            
-            throw new ArgumentException($"A vehicle with plate {plate} already exists in the inventory.");
+            return true;
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error creating vehicle: {ex.Message}");
-            return false;
-        }
+
+        throw new ArgumentException($"A vehicle with plate {plate} already exists in the inventory.");
     }
 
     public IEnumerable<Vehicle> GetFilteredAuctionVehicles(string? type = null, string? model = null, string? manufacturer = null, int? year = null)
@@ -76,125 +51,90 @@ public class AuctionSystem
 
     public bool StartAuction(string plate)
     {
-        try
-        {  
-            if (!Inventory.TryGetValue(plate, out var vehicle))
-            {           
-            throw new ArgumentException($"Vehicle with plate {plate} not found in the system.");
-            }
-
-            if(VehicleAuctions.TryGetValue(plate, out Guid? existingAuctionId) && existingAuctionId.HasValue)
-            {
-                throw new InvalidOperationException($"Vehicle with plate {plate} is already assigned to auction with ID {existingAuctionId}.");
-            }
-        
-            var auction = new Auction(plate, vehicle.StartingBid, out Guid auctionId);
-            if (VehicleAuctions.TryUpdate(plate, auctionId, null))
-            {
-                Auctions.TryAdd(auction, plate);
-                Console.WriteLine($"Auction with ID {auctionId} started for vehicle with plate {plate}.");
-                return true;
-            }
-        }
-        catch (Exception ex)
+        if (!Inventory.TryGetValue(plate, out var vehicle))
         {
-            Console.WriteLine($"Error starting auction: {ex.Message}");
+            throw new ArgumentException($"Vehicle with plate {plate} not found in the system.");
         }
-        return false; 
+
+        if (VehicleAuctions.ContainsKey(plate))
+        {
+            throw new InvalidOperationException($"Vehicle with plate {plate} is already assigned to an active auction.");
+        }
+
+        var auction = new Auction(plate, vehicle.StartingBid, out Guid auctionId);
+        if (!VehicleAuctions.TryAdd(plate, auctionId))
+        {
+            throw new InvalidOperationException($"Failed to register auction for vehicle with plate {plate}.");
+        }
+
+        if (Auctions.TryAdd(auctionId, auction))
+        {
+            return true;
+        }
+
+        VehicleAuctions.TryRemove(plate, out _);
+        throw new InvalidOperationException($"Failed to start auction for vehicle with plate {plate}.");
     }
 
     public bool PlaceBid(string plate, string user, int bidAmount)
     {   
-        try
-        {
-            VerifyVehicleAuction(plate, out var auction);
-            if(auction != null)
-            {
-                return auction.BidOnVehicle(user, bidAmount);
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error placing bid: {ex.Message}");
-        }
-        return false;
+        VerifyVehicleAuction(plate, out var auction);
+
+        return auction.BidOnVehicle(user, bidAmount);
     }
 
     public int EndAuction(string plate, bool isSold)
     {
-        try
-        {
-            VerifyVehicleAuction(plate, out var auction);
-            if(auction != null)
-            {
-                if (Auctions.TryRemove(auction, out _))
-                {
-                    if (!isSold)
-                    {
-                        Console.WriteLine($"Auction with ID {auction.Id} ended for vehicle with plate {plate}. Vehicle not sold.");
-                        VehicleAuctions[plate] = null;
-                        return 0;
-                    }
-                    else
-                    {
-                        Inventory.TryRemove(plate, out _);
-                        VehicleAuctions.TryRemove(plate, out _);
-                        Console.WriteLine($"Auction with ID {auction.Id} ended for vehicle with plate {plate}. Vehicle sold.");
-                        int finalBid = auction.GetCurrentBid();
-                        Auctions.Remove(auction, out _);
-                        return finalBid;
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error ending auction: {ex.Message}");
-        }
-        return -1;
+        VerifyVehicleAuction(plate, out var auction);
 
+        if (!VehicleAuctions.TryRemove(plate, out var auctionId))
+        {
+            throw new InvalidOperationException($"No active auction association found for vehicle with plate {plate}.");
+        }
+
+        if (!Auctions.TryRemove(auctionId, out _))
+        {
+            throw new InvalidOperationException($"Auction with ID {auctionId} was not found among active auctions.");
+        }
+
+        if (!isSold)
+        {
+            return 0;
+        }
+
+        Inventory.TryRemove(plate, out _);
+        return auction.GetCurrentBid();
     }
 
     public List<Auction> GetActiveAuctions()
     {
-        return Auctions.Keys.ToList();
+        return Auctions.Values.ToList();
     }
 
     public void PrintAuctionLog(string plate)
     {
-        try
+        VerifyVehicleAuction(plate, out var auction);
+
+        var log = auction.GetBiddingLog();
+        Console.WriteLine($"Bidding log for vehicle with plate {plate}:");
+        foreach (var entry in log)
         {
-            VerifyVehicleAuction(plate, out var auction);
-            if(auction != null)
-            {
-                var log = auction.GetBiddingLog();
-                Console.WriteLine($"Bidding log for vehicle with plate {plate}:");
-                foreach (var entry in log)
-                {
-                    Console.WriteLine($"{entry.Timestamp}: {entry.User} bid ${entry.BidAmount}");
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error printing auction log: {ex.Message}");
+            Console.WriteLine($"{entry.Timestamp}: {entry.User} bid ${entry.BidAmount}");
         }
     }
 
-    private void VerifyVehicleAuction(string plate, out Auction? auction)
+    private void VerifyVehicleAuction(string plate, out Auction auction)
     {
-        auction = null;
-        if (!VehicleAuctions.TryGetValue(plate, out Guid? auctionId) || !auctionId.HasValue)
+        auction = null!;
+        if (!VehicleAuctions.TryGetValue(plate, out var auctionId))
         {
             throw new ArgumentException($"No active auction found for vehicle with plate {plate}.");
         }
 
-        auction = Auctions.Keys.FirstOrDefault(a => a.Id == auctionId.Value);
-        if (auction == null)
+        if (!Auctions.TryGetValue(auctionId, out auction!))
         {
             throw new InvalidOperationException($"Auction with ID {auctionId} not found for vehicle with plate {plate}.");
         }
-        return;
     }
 
     

@@ -5,8 +5,7 @@ static class Program
 {   
     static public int Main()
     {
-        var auctionSystem = AuctionSystemModel.Instance(new VehicleFactory());
-
+        var auctionSystem = new AuctionSystemModel(new VehicleFactory());
 
         string sedanPlate = "ABC12345";
         string hatchbackPlate = "DEF67890";
@@ -48,28 +47,56 @@ static class Program
         auctionSystem.PlaceBid(sedanPlate, "User2", 17000);
 
         auctionSystem.PrintAuctionLog(sedanPlate);
-        auctionSystem.PrintAuctionLog(suvPlate);
+        try
+        {
+            auctionSystem.PrintAuctionLog(suvPlate);
+        }
+        catch (ArgumentException ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
 
         auctionSystem.PlaceBid(sedanPlate, "User3", 26000);
-        auctionSystem.PlaceBid(suvPlate, "User3", 26000);
-        int sedanAuctionResult = auctionSystem.EndAuction(sedanPlate, true);
-        int suvAuctionResult = auctionSystem.EndAuction(suvPlate, false);
-        auctionSystem.PlaceBid(sedanPlate, "User4", 50000);
-
-        var badVehicleOk = auctionSystem.CreateVehicle("INVAL ID", "SED", "Chevrolet", "Camaro", 2019, 10000);
-        var badVehicle2Ok = auctionSystem.CreateVehicle("INVAL ID", "GED", "Chevrolet", "Camaro", 2020, 10000);
-        var badVehicle3Ok = auctionSystem.CreateVehicle("INVAL ID", "SED", "Chevro!et", "Camaro", 2021, 10000);
-        var badVehicle4Ok = auctionSystem.CreateVehicle("INVAL ID", "SED", "Chevrolet", "Cam4ro", 2022, 10000);
-        var badVehicle5Ok = auctionSystem.CreateVehicle("INVAL ID", "SED", "Chevrolet", "Camaro", 1700, 10000);
-        var badVehicle6Ok = auctionSystem.CreateVehicle("INVAL ID", "SED", "Chevrolet", "Camaro", 2023, -2);
-
-        if(badVehicleOk || badVehicle2Ok || badVehicle3Ok || badVehicle4Ok || badVehicle5Ok || badVehicle6Ok)
+        try
         {
-            Console.WriteLine("Error: Invalid vehicle was created successfully. Please check validation logic.");
+            auctionSystem.PlaceBid(suvPlate, "User3", 26000);
         }
-        else
+        catch (ArgumentException ex)
         {
-            Console.WriteLine("Invalid vehicles were correctly rejected by the system.");
+            Console.WriteLine(ex.Message);
+        }
+
+        try
+        {
+            int sedanAuctionResult = auctionSystem.EndAuction(sedanPlate, true);
+            int suvAuctionResult = auctionSystem.EndAuction(suvPlate, false);
+        }
+        catch (ArgumentException ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+
+        try
+        {
+            auctionSystem.PlaceBid(sedanPlate, "User4", 50000);
+        }
+        catch (ArgumentException ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+
+        try
+        {
+            var badVehicleOk = auctionSystem.CreateVehicle("INVAL ID", "SED", "Chevrolet", "Camaro", 2019, 10000);
+            var badVehicle2Ok = auctionSystem.CreateVehicle("INVAL ID", "GED", "Chevrolet", "Camaro", 2020, 10000);
+            var badVehicle3Ok = auctionSystem.CreateVehicle("INVAL ID", "SED", "Chevro!et", "Camaro", 2021, 10000);
+            var badVehicle4Ok = auctionSystem.CreateVehicle("INVAL ID", "SED", "Chevrolet", "Cam4ro", 2022, 10000);
+            var badVehicle5Ok = auctionSystem.CreateVehicle("INVAL ID", "SED", "Chevrolet", "Camaro", 1700, 10000);
+            var badVehicle6Ok = auctionSystem.CreateVehicle("INVAL ID", "SED", "Chevrolet", "Camaro", 2023, -2);
+        }        
+        catch (ArgumentException ex)
+        {
+            Console.WriteLine($"Caught expected exception for invalid vehicle creation: {ex.Message}");
         }
 
         var vehicles = auctionSystem.GetFilteredAuctionVehicles();
@@ -78,7 +105,6 @@ static class Program
         {
             Console.WriteLine($"Filtered Vehicle - {vehicle.Type}: {vehicle.Manufacturer} {vehicle.Model} ({vehicle.Year}) - Starting Bid: ${vehicle.StartingBid}");
         }
-        
 
         var sedan2Ok = auctionSystem.CreateVehicle("JKL98765", "SED", "Chevrolet", "Camaro", 2020, 22000);
         var sedan3Ok = auctionSystem.CreateVehicle("MNO24680", "SED", "BMW", "3 Series", 2020, 40000);
@@ -91,8 +117,6 @@ static class Program
         {
             Console.WriteLine("Additional sedans added to inventory successfully.");
         }
-
-
 
         return 0;
     }
