@@ -6,4 +6,5 @@ public class SUV(string plate, string manufacturer, string model, int year, int 
 {
     [Range(2, int.MaxValue, ErrorMessage = "Number of seats must be a positive value greater than 1.")]
     public int NumberOfSeats { get; set; } = numberOfSeats;
+    static public string PropertyNameNS => "NumberOfSeats";
 }

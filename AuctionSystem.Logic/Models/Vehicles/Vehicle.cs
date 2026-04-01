@@ -10,7 +10,7 @@ static class VehicleDefaults
     public const int DefaultLoadCapacity = 1000;
 }
 
-static class VehicleTypes
+static public class VehicleTypes
 {
     public const string Sedan = "SED";
     public const string SUV = "SUV";

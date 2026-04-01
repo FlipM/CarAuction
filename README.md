@@ -25,6 +25,9 @@ Implements an MVP car auction system, in C#, that handles requests via API.
 => Vehicle uniqueness
 
     How do we define that is a vehicle is unique? It is possible to use the internal C#/.NET Guid. However, there is a possibility that different users insert the same car for auctioning, which will cause 2 instances to be created with different Guid's. It is common practice for countries to consider that the vehicle's plate is unique, so that we can do the same here. This way, we can manually block any further error by requiring uniqueness of the plate. Here, we consider a alphanumeric 8-character string to represent a plate.
+
+=> Throw vs Console Message
+    The requirements specific tells to raise errors in situations such as duplicate vehicle or trying to add an auctioned vehicle to a new auction. However, is not clear how to handle that errors. I opted to build try-catch handlers inside the function. That means that most of the time, they will return something like a boolean, even after raising the error. 
      
 # Assumptions
 

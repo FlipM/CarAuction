@@ -31,25 +31,25 @@ public class VehicleFactory : IVehicleFactory
 
     private Hatchback CreateHatchback(string plate, string manufacturer, string model, int year, int startingBid, Dictionary<string, object> extras)
     {
-        int doors = GetIntFromExtras(extras, "NumberOfDoors", VehicleDefaults.DefaultHatchbackDoors);
+        int doors = GetIntFromExtras(extras, Hatchback.PropertyNameND, VehicleDefaults.DefaultHatchbackDoors);
         return new Hatchback(plate, manufacturer, model, year, startingBid, doors);
     }
 
     private Sedan CreateSedan(string plate, string manufacturer, string model, int year, int startingBid, Dictionary<string, object> extras)
     {
-        int doors = GetIntFromExtras(extras, "NumberOfDoors", VehicleDefaults.DefaultSedanDoors);
+        int doors = GetIntFromExtras(extras, Sedan.PropertyNameND, VehicleDefaults.DefaultSedanDoors);
         return new Sedan(plate, manufacturer, model, year, startingBid, doors);
     }
 
     private SUV CreateSUV(string plate, string manufacturer, string model, int year, int startingBid, Dictionary<string, object> extras)
     {
-        int seats = GetIntFromExtras(extras, "NumberOfSeats", VehicleDefaults.DefaultNumberOfSeats);
+        int seats = GetIntFromExtras(extras, SUV.PropertyNameNS, VehicleDefaults.DefaultNumberOfSeats);
         return new SUV(plate, manufacturer, model, year, startingBid, seats);
     }
 
     private Truck CreateTruck(string plate, string manufacturer, string model, int year, int startingBid, Dictionary<string, object> extras)
     {
-        int loadCapacity = GetIntFromExtras(extras, "LoadCapacity", VehicleDefaults.DefaultLoadCapacity);
+        int loadCapacity = GetIntFromExtras(extras, Truck.PropertyNameLC, VehicleDefaults.DefaultLoadCapacity);
         return new Truck(plate, manufacturer, model, year, startingBid, loadCapacity);
     }
 

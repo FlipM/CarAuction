@@ -6,4 +6,5 @@ public class Truck(string plate, string manufacturer, string model, int year, in
 {
     [Range(1, int.MaxValue, ErrorMessage = "Load capacity must be a positive value.")]
     public int LoadCapacity { get; set; } = loadCapacity;
+    static public string PropertyNameLC => "LoadCapacity";
 }

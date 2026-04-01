@@ -6,4 +6,5 @@ public class Sedan(string plate, string manufacturer, string model, int year, in
 {
     [Range(2, int.MaxValue, ErrorMessage = "Number of doors must be a positive value greater than 1.")]
     public int NumberOfDoors { get; set; } = numberOfDoors;
+    static public string PropertyNameND => "NumberofDoors";
 }

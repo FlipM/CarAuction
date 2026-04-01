@@ -22,7 +22,7 @@ static class Program
         }
 
         Console.WriteLine("Vehicles added to inventory:");
-        foreach (var vehicle in auctionSystem.Inventory.Values)
+        foreach (var vehicle in auctionSystem.GetFilteredAuctionVehicles())
         {
             Console.WriteLine($"{vehicle.Type}: {vehicle.Manufacturer} {vehicle.Model} ({vehicle.Year}) - Starting Bid: ${vehicle.StartingBid}");
         }
